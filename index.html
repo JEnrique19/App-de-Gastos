@@ -48,14 +48,14 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     <div><label>Meta de ahorro mensual</label><input type="number" id="meta" min="0" step="0.01"></div>
   </div>
   <div class="tabs" style="margin-top:12px">
-    <button id="q1">1ª quincena (Azul + Roja)</button>
-    <button id="q2">2ª quincena (Morada)</button>
+    <button id="q1">1ª quincena (BBVA + Santander)</button>
+    <button id="q2">2ª quincena (NU)</button>
   </div>
   <div class="row" id="inputs"></div>
 </div>
 
 <div class="grid">
-  <div class="card hl"><h2>🏦 Transferir a cuenta electrónica</h2>
+  <div class="card hl"><h2>🏦 Transferir a cuenta AZTECA</h2>
     <div class="big" id="tTransfer"></div><div id="dTransfer" class="mut"></div></div>
   <div class="card hl"><h2>💵 Retirar en efectivo</h2>
     <div class="big" id="tCash"></div><div id="dCash" class="mut"></div></div>
@@ -68,7 +68,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 
 <div class="card">
   <h2>Gastos fijos</h2>
-  <p class="mut">Cada gasto se prorratea por quincena: monto ÷ meses de periodicidad ÷ 2. Así cada quincena aparta lo que le corresponde (por ejemplo, el gas de $700 cada 6 meses aparta $58.33 por quincena).</p>
+  <p class="mut">Cada gasto se divide por quincena: monto / meses de periodicidad / 2. Así cada quincena aparta lo que le corresponde (por ejemplo, el gas de $600 cada 6 meses aparta $50.00 por quincena).</p>
   <table><thead><tr><th>Concepto</th><th class="n">Monto</th><th>Cada (meses)</th><th>Destino</th><th class="n">Por quincena</th><th></th></tr></thead><tbody id="lista"></tbody></table>
   <h2 style="margin-top:16px">Agregar gasto</h2>
   <div class="row">
@@ -87,20 +87,20 @@ const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(n);
 const DEFAULTS=[
  {n:'Renta',m:1600,e:1,d:'cash'},
- {n:'Gas',m:700,e:6,d:'cash'},
+ {n:'Gas',m:600,e:6,d:'cash'},
  {n:'Gastos del hogar',m:4000,e:1,d:'cash'},
  {n:'Luz',m:400,e:2,d:'transfer'},
  {n:'Teléfono',m:500,e:1,d:'transfer'},
  {n:'Internet',m:440,e:1,d:'transfer'}
 ];
-const CARDS={1:['Azul','Roja'],2:['Morada']};
+const CARDS={1:['BBVA','Santander'],2:['NU']};
 const DEST={transfer:'Transferir',cash:'Efectivo',otro:'Otro'};
 const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??f}catch{return f}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let gastos=load('gastos',DEFAULTS);
 let meta=load('meta',5000);
-let datos=load('datos',{}); // {"2026-10-1":{sueldo:..,Azul:..}}
+let datos=load('datos',{}); // {"2026-10-1":{sueldo:..,BBVA:..}}
 let q=1;
 const hoy=new Date();
 $('mes').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0');
