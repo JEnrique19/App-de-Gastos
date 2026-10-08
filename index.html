@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mis Gastos Quincenales</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--tx:#1d2433;--mut:#6b7488;--bd:#e1e5ee;--pri:#3b5bdb;--ok:#2b8a3e;--bad:#c92a2a;--warn:#e67700}
+@media (prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b202b;--tx:#e8ebf2;--mut:#98a1b5;--bd:#2c3345;--pri:#7c93ff;--ok:#51cf66;--bad:#ff6b6b;--warn:#ffa94d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,Segoe UI,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:1.5rem;margin:.2rem 0 1rem}
+h2{font-size:1.05rem;margin:0 0 .8rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:.85rem;color:var(--mut);margin:.6rem 0 .2rem}
+input,select,button{font:inherit;color:var(--tx)}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
+button{cursor:pointer;border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:8px 12px}
+button.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.row>*{flex:1;min-width:110px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1}
+.tabs button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--bd)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.kpi{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)}
+.kpi b{font-variant-numeric:tabular-nums}
+.big{font-size:1.9rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tag{font-size:.75rem;border-radius:99px;padding:2px 8px;background:var(--bd)}
+.mut{color:var(--mut);font-size:.85rem}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.x{padding:2px 8px;color:var(--bad)}
+.hl{border-left:4px solid var(--pri)}
+</style>
+</head>
+<body>
+<main>
+<h1>💸 Mis Gastos Quincenales</h1>
+
+<div class="card">
+  <div class="row">
+    <div><label>Mes</label><input type="month" id="mes"></div>
+    <div><label>Meta de ahorro mensual</label><input type="number" id="meta" min="0" step="0.01"></div>
+  </div>
+  <div class="tabs" style="margin-top:12px">
+    <button id="q1">1ª quincena (Azul + Roja)</button>
+    <button id="q2">2ª quincena (Morada)</button>
+  </div>
+  <div class="row" id="inputs"></div>
+</div>
+
+<div class="grid">
+  <div class="card hl"><h2>🏦 Transferir a cuenta electrónica</h2>
+    <div class="big" id="tTransfer"></div><div id="dTransfer" class="mut"></div></div>
+  <div class="card hl"><h2>💵 Retirar en efectivo</h2>
+    <div class="big" id="tCash"></div><div id="dCash" class="mut"></div></div>
+</div>
+
+<div class="grid">
+  <div class="card"><h2>Resumen de la quincena</h2><div id="resumen"></div></div>
+  <div class="card"><h2>Resumen del mes</h2><div id="mensual"></div></div>
+</div>
+
+<div class="card">
+  <h2>Gastos fijos</h2>
+  <p class="mut">Cada gasto se prorratea por quincena: monto ÷ meses de periodicidad ÷ 2. Así cada quincena aparta lo que le corresponde (por ejemplo, el gas de $700 cada 6 meses aparta $58.33 por quincena).</p>
+  <table><thead><tr><th>Concepto</th><th class="n">Monto</th><th>Cada (meses)</th><th>Destino</th><th class="n">Por quincena</th><th></th></tr></thead><tbody id="lista"></tbody></table>
+  <h2 style="margin-top:16px">Agregar gasto</h2>
+  <div class="row">
+    <div style="flex:2"><label>Concepto</label><input id="nNom"></div>
+    <div><label>Monto</label><input id="nMonto" type="number" min="0" step="0.01"></div>
+    <div><label>Cada (meses)</label><input id="nMeses" type="number" min="1" step="1" value="1"></div>
+    <div><label>Destino</label><select id="nDest"><option value="transfer">Transferir</option><option value="cash">Efectivo</option><option value="otro">Otro</option></select></div>
+    <div style="flex:0"><button class="pri" id="add">Agregar</button></div>
+  </div>
+  <p style="margin-top:12px"><button id="reset">Restaurar gastos por defecto</button></p>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(n);
+const DEFAULTS=[
+ {n:'Renta',m:1600,e:1,d:'cash'},
+ {n:'Gas',m:700,e:6,d:'cash'},
+ {n:'Gastos del hogar',m:4000,e:1,d:'cash'},
+ {n:'Luz',m:400,e:2,d:'transfer'},
+ {n:'Teléfono',m:500,e:1,d:'transfer'},
+ {n:'Internet',m:440,e:1,d:'transfer'}
+];
+const CARDS={1:['Azul','Roja'],2:['Morada']};
+const DEST={transfer:'Transferir',cash:'Efectivo',otro:'Otro'};
+const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??f}catch{return f}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+let gastos=load('gastos',DEFAULTS);
+let meta=load('meta',5000);
+let datos=load('datos',{}); // {"2026-10-1":{sueldo:..,Azul:..}}
+let q=1;
+const hoy=new Date();
+$('mes').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0');
+$('meta').value=meta;
+if(hoy.getDate()>15)q=2;
+
+const porQ=g=>g.m/g.e/2;
+const key=q_=>$('mes').value+'-'+q_;
+const num=v=>{const x=parseFloat(v);return isFinite(x)&&x>0?x:0};
+
+function calc(q_){
+  const d=datos[key(q_)]||{};
+  const sueldo=num(d.sueldo);
+  const tarjetas=CARDS[q_].map(c=>({c,m:num(d[c])}));
+  const pTarj=tarjetas.reduce((s,t)=>s+t.m,0);
+  const sum=dest=>gastos.filter(g=>g.d===dest).reduce((s,g)=>s+porQ(g),0);
+  const transfer=sum('transfer'), cash=sum('cash'), otro=sum('otro');
+  const fijos=transfer+cash+otro;
+  const reales=fijos+pTarj;
+  const ahorro=sueldo-reales;
+  return {sueldo,tarjetas,pTarj,transfer,cash,otro,fijos,reales,ahorro};
+}
+
+function render(){
+  $('q1').classList.toggle('on',q===1);$('q2').classList.toggle('on',q===2);
+  // inputs
+  const d=datos[key(q)]||{};
+  let h=`<div><label>Sueldo recibido</label><input type="number" min="0" step="0.01" data-f="sueldo" value="${d.sueldo??''}"></div>`;
+  CARDS[q].forEach(c=>h+=`<div><label>Pago tarjeta ${c.toUpperCase()}</label><input type="number" min="0" step="0.01" data-f="${c}" value="${d[c]??''}"></div>`);
+  $('inputs').innerHTML=h;
+  $('inputs').querySelectorAll('input').forEach(i=>i.oninput=()=>{
+    const k=key(q);datos[k]=datos[k]||{};datos[k][i.dataset.f]=i.value;save('datos',datos);renderResults();
+  });
+  renderList();renderResults();
+}
+
+function renderResults(){
+  const r=calc(q), metaQ=num(meta)/2;
+  const part=dest=>gastos.filter(g=>g.d===dest).map(g=>`${g.n} ${fmt(porQ(g))}`).join(' + ')||'—';
+  $('tTransfer').textContent=fmt(r.transfer);$('dTransfer').textContent=part('transfer');
+  $('tCash').textContent=fmt(r.cash);$('dCash').textContent=part('cash');
+  const diff=r.ahorro-metaQ;
+  const cls=r.ahorro<0?'bad':diff>=0?'ok':'warn';
+  const kp=(a,b,c='')=>`<div class="kpi"><span>${a}</span><b class="${c}">${b}</b></div>`;
+  let h=kp('Sueldo recibido',fmt(r.sueldo));
+  r.tarjetas.forEach(t=>h+=kp('Tarjeta '+t.c,'− '+fmt(t.m)));
+  h+=kp('Transferir (luz, tel., internet…)','− '+fmt(r.transfer));
+  h+=kp('Efectivo (renta, gas, hogar…)','− '+fmt(r.cash));
+  if(r.otro)h+=kp('Otros gastos','− '+fmt(r.otro));
+  h+=kp('<b>AHORRO de la quincena</b>',fmt(r.ahorro),cls);
+  h+=kp('Meta por quincena',fmt(metaQ));
+  h+=kp(diff>=0?'Por encima de la meta':'Falta para la meta',fmt(Math.abs(diff)),cls);
+  h+=`<div class="kpi" style="border:0"><span><b>GASTOS REALES</b><br><span class="mut">gastos fijos + tarjetas</span></span><b class="big">${fmt(r.reales)}</b></div>`;
+  if(r.ahorro<0)h+=`<p class="bad">⚠ El sueldo no alcanza para cubrir los gastos.</p>`;
+  $('resumen').innerHTML=h;
+
+  const a=calc(1),b=calc(2);
+  let m=`<table><thead><tr><th></th><th class="n">1ª</th><th class="n">2ª</th><th class="n">Mes</th></tr></thead><tbody>`;
+  const row=(t,x,y)=>`<tr><td>${t}</td><td class="n">${fmt(x)}</td><td class="n">${fmt(y)}</td><td class="n"><b>${fmt(x+y)}</b></td></tr>`;
+  m+=row('Sueldo',a.sueldo,b.sueldo)+row('Tarjetas',a.pTarj,b.pTarj)+row('Transferir',a.transfer,b.transfer)+row('Efectivo',a.cash,b.cash);
+  m+=row('Gastos reales',a.reales,b.reales)+row('Ahorro',a.ahorro,b.ahorro);
+  m+=`</tbody></table>`;
+  const tot=a.ahorro+b.ahorro, dm=tot-num(meta);
+  m+=`<p class="${tot<0?'bad':dm>=0?'ok':'warn'}">Ahorro del mes: <b>${fmt(tot)}</b> (${dm>=0?'+':'−'}${fmt(Math.abs(dm))} vs. meta de ${fmt(num(meta))})</p>`;
+  $('mensual').innerHTML=m;
+}
+
+function renderList(){
+  $('lista').innerHTML=gastos.map((g,i)=>`<tr data-i="${i}">
+    <td><input data-f="n" value="${esc(g.n)}"></td>
+    <td><input data-f="m" type="number" min="0" step="0.01" value="${g.m}"></td>
+    <td><input data-f="e" type="number" min="1" step="1" value="${g.e}" title="Cada cuántos meses"></td>
+    <td><select data-f="d">${Object.entries(DEST).map(([k,v])=>`<option value="${k}"${g.d===k?' selected':''}>${v}</option>`).join('')}</select></td>
+    <td class="n" id="pq${i}">${fmt(porQ(g))}</td>
+    <td><button class="x" data-del="${i}" title="Eliminar">✕</button></td></tr>`).join('');
+  $('lista').querySelectorAll('[data-f]').forEach(el=>el.oninput=el.onchange=()=>{
+    const i=+el.closest('tr').dataset.i,g=gastos[i],f=el.dataset.f;
+    if(f==='n')g.n=el.value;
+    else if(f==='d')g.d=el.value;
+    else if(f==='m')g.m=Math.max(0,parseFloat(el.value)||0);
+    else g.e=Math.max(1,parseInt(el.value)||1);
+    save('gastos',gastos);
+    $('pq'+i).textContent=fmt(porQ(g));
+    renderResults();
+  });
+  $('lista').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{gastos.splice(+b.dataset.del,1);save('gastos',gastos);renderList();renderResults()});
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('q1').onclick=()=>{q=1;render()};
+$('q2').onclick=()=>{q=2;render()};
+$('mes').onchange=render;
+$('meta').oninput=e=>{meta=e.target.value;save('meta',meta);renderResults()};
+$('add').onclick=()=>{
+  const n=$('nNom').value.trim(),m=parseFloat($('nMonto').value),e=Math.max(1,parseInt($('nMeses').value)||1);
+  if(!n||!(m>0))return;
+  gastos.push({n,m,e,d:$('nDest').value});save('gastos',gastos);
+  $('nNom').value='';$('nMonto').value='';$('nMeses').value=1;renderList();renderResults();
+};
+$('reset').onclick=()=>{if(confirm('¿Restaurar los gastos por defecto? Se perderán los que agregaste.')){gastos=JSON.parse(JSON.stringify(DEFAULTS));save('gastos',gastos);renderList();renderResults()}};
+render();
+</script>
+</body>
+</html>
